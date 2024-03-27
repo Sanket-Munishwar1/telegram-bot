@@ -160,58 +160,40 @@ export async function downloadAndSaveImage(fileId, chatId, userName) {
 
 
         
-        const currentDate = getCurrentDate();
-        // const protein = parsedJson.macros.protein;
-        // const carbs = parsedJson.macros.carbs;
-        // const fat = parsedJson.macros.fat;
+        // const currentDate = getCurrentDate();
         
-        // Update the 'meals' column in the 'users' table
+
+        // const { data: userData, error: userError } = await supabase
+        //     .from('users')
+        //     .select('meals, usage')
+        //     .eq('telegram_id', chatId)
+        //     .single();
+
+        // if (userError) {
+        //     console.error('Error fetching user data:', userError);
+        //     throw new Error('Failed to fetch user data');
+        // }
+
+        // // Update the 'meals' and 'usage' columns in the 'users' table
+        // const existingMeals = userData.meals || {};
+        // const existingMealForCurrentDate = existingMeals[currentDate] || {};
+        // const existingUsage = userData.usage || {};
+        // const existingUsageForCurrentDate = existingUsage[currentDate] || { magic_meals_credit_used: 0 };
+        
+
+        // const protein = parsedJson.macros.protein
+        // const carbs = parsedJson.macros.carbs 
+        // const fat = parsedJson.macros.fat 
+
         // await supabase
         //     .from('users')
         //     .update({
-        //         meals: {
-        //             [currentDate]:{
-        //                 Protein: protein,
-        //                 Carbs: carbs,
-        //                 Fat: fat
-        //             }
-
-        //         } // Append the usage data to existing meals data using SQL concat operator
+        //         // Append the new meal data to existing meal data if it exists for the current date
+        //         meals: { ...existingMeals, [currentDate]: { ...existingMealForCurrentDate, Protein: (existingMealForCurrentDate.Protein || 0) + protein, Carbs: (existingMealForCurrentDate.Carbs || 0) + carbs, Fat: (existingMealForCurrentDate.Fat || 0) + fat }},
+        //         // Increment the magic_meals_credit_used value in the usage column
+        //         usage: { ...existingUsage, [currentDate]: {magic_meals_credit: existingUsage.magic_meals_credit || 3,magic_meals_credit_used: existingUsageForCurrentDate.magic_meals_credit_used + 1 }},
         //     })
         //     .eq('telegram_id', chatId);
-
-
-        const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('meals, usage')
-            .eq('telegram_id', chatId)
-            .single();
-
-        if (userError) {
-            console.error('Error fetching user data:', userError);
-            throw new Error('Failed to fetch user data');
-        }
-
-        // Update the 'meals' and 'usage' columns in the 'users' table
-        const existingMeals = userData.meals || {};
-        const existingMealForCurrentDate = existingMeals[currentDate] || {};
-        const existingUsage = userData.usage || {};
-        const existingUsageForCurrentDate = existingUsage[currentDate] || { magic_meals_credit_used: 0 };
-        
-
-        const protein = parsedJson.macros.protein
-        const carbs = parsedJson.macros.carbs 
-        const fat = parsedJson.macros.fat 
-
-        await supabase
-            .from('users')
-            .update({
-                // Append the new meal data to existing meal data if it exists for the current date
-                meals: { ...existingMeals, [currentDate]: { ...existingMealForCurrentDate, Protein: (existingMealForCurrentDate.Protein || 0) + protein, Carbs: (existingMealForCurrentDate.Carbs || 0) + carbs, Fat: (existingMealForCurrentDate.Fat || 0) + fat }},
-                // Increment the magic_meals_credit_used value in the usage column
-                usage: { ...existingUsage, [currentDate]: {magic_meals_credit: existingUsage.magic_meals_credit || 3,magic_meals_credit_used: existingUsageForCurrentDate.magic_meals_credit_used + 1 }},
-            })
-            .eq('telegram_id', chatId);
 
         return {
             success: true,
