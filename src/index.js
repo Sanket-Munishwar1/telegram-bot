@@ -13,6 +13,7 @@ app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 
 // app.post("*",bot)
+app.use(bot);
 
 app.get('*', async (req, res) => {
     return res.status(200).send({
