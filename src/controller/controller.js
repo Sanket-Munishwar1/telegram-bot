@@ -7,10 +7,12 @@ import { openAiVision } from "../utils/helper.js"; // Import the openAiVision fu
 const token = process.env.TELEGRAM_BOT_TOKEN;
 const bot = new TelegramBot(token, { polling: true });
 
+
 bot.on('message', async (msg) => {
     try {
         const chatId = msg.chat.id;
         const userName = `${msg.from.first_name} ${msg.from.last_name || ""}`;
+
 
         //checking the user 
         const firstName = msg.from.first_name || "";
@@ -29,6 +31,7 @@ bot.on('message', async (msg) => {
 
         // Create or update meal entry for the user for the current month
         await createOrUpdateMealEntry(chatId, userName);
+
 
 
 
@@ -101,7 +104,9 @@ bot.on('message', async (msg) => {
                     // Handle if OpenAI response is null
                     await sendMessage(chatId, 'Hey, Please share the image !');
                 }
+               
                 return;
+                
             }
         } catch (error) {
             errorHandler(error, 'handleMessage');
