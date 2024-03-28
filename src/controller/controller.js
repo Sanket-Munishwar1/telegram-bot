@@ -13,7 +13,6 @@ bot.on('message', async (msg) => {
         const chatId = msg.chat.id;
         const userName = `${msg.from.first_name} ${msg.from.last_name || ""}`;
 
-
         //checking the user 
         const firstName = msg.from.first_name || "";
         const lastName = msg.from.last_name || "";
@@ -31,7 +30,6 @@ bot.on('message', async (msg) => {
 
         // Create or update meal entry for the user for the current month
         await createOrUpdateMealEntry(chatId, userName);
-
 
 
 
