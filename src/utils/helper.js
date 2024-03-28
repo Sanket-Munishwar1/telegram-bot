@@ -57,18 +57,7 @@ export const waitingTexts = [
     "🍩 Doughnut of determination! Processing your food pic... Doughnut worry, details soon! 🔄🍩",
   ];
 
-// Function to send a message via Telegram API
-// export async function sendMessage(chatId, messageText) {
-//     try {
-//         // Send the message using the bot.sendMessage method
-//         await bot.sendMessage(chatId, messageText);
-         
-//     } catch (error) {
-//         // Handle any errors
-//         console.error('Error sending message:', error);
-//         return false; // Return false if there's an error
-//     }
-// }
+
 
 export async function sendMessage(chatId, message) {
     try {
@@ -158,42 +147,6 @@ export async function downloadAndSaveImage(fileId, chatId, userName) {
         - Fat: ${parsedJson.macros.fat}g
         Likely Ingredients: ${parsedJson.likely_ingredients.map(ingredient => `\n- ${ingredient.ingredient} (${ingredient.weight}g)`)}`;
 
-
-        
-        // const currentDate = getCurrentDate();
-        
-
-        // const { data: userData, error: userError } = await supabase
-        //     .from('users')
-        //     .select('meals, usage')
-        //     .eq('telegram_id', chatId)
-        //     .single();
-
-        // if (userError) {
-        //     console.error('Error fetching user data:', userError);
-        //     throw new Error('Failed to fetch user data');
-        // }
-
-        // // Update the 'meals' and 'usage' columns in the 'users' table
-        // const existingMeals = userData.meals || {};
-        // const existingMealForCurrentDate = existingMeals[currentDate] || {};
-        // const existingUsage = userData.usage || {};
-        // const existingUsageForCurrentDate = existingUsage[currentDate] || { magic_meals_credit_used: 0 };
-        
-
-        // const protein = parsedJson.macros.protein
-        // const carbs = parsedJson.macros.carbs 
-        // const fat = parsedJson.macros.fat 
-
-        // await supabase
-        //     .from('users')
-        //     .update({
-        //         // Append the new meal data to existing meal data if it exists for the current date
-        //         meals: { ...existingMeals, [currentDate]: { ...existingMealForCurrentDate, Protein: (existingMealForCurrentDate.Protein || 0) + protein, Carbs: (existingMealForCurrentDate.Carbs || 0) + carbs, Fat: (existingMealForCurrentDate.Fat || 0) + fat }},
-        //         // Increment the magic_meals_credit_used value in the usage column
-        //         usage: { ...existingUsage, [currentDate]: {magic_meals_credit: existingUsage.magic_meals_credit || 3,magic_meals_credit_used: existingUsageForCurrentDate.magic_meals_credit_used + 1 }},
-        //     })
-        //     .eq('telegram_id', chatId);
 
         return {
             success: true,
