@@ -12,14 +12,6 @@ app.use(express.json());
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 
-
-app.post('*', async (req, res) => {
-    
-    return res.status(200).send({
-        message: "Api is runnig like a butter"
-    });
-});
-
 app.get('*', async (req, res) => {
     
     return res.status(200).send({
