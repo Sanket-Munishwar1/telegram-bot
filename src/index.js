@@ -3,7 +3,7 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
-import { bot , botResponse} from "./controller/controller.js";
+import { bot } from "./controller/controller.js";
 
 const app = express();
 const port = process.env.PORT || 4000;
@@ -16,14 +16,14 @@ app.use(express.urlencoded({ extended: true }));
 app.post('*', async (req, res) => {
     
     return res.status(200).send({
-        message: botResponse
+        message: "Api is runnig like a butter"
     });
 });
 
 app.get('*', async (req, res) => {
     
     return res.status(200).send({
-        message: botResponse
+        message: "Api is runnig like a butter"
     });
 });
 
