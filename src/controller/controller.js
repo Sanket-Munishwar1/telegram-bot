@@ -1,7 +1,7 @@
 // controller.js
 
 import TelegramBot from 'node-telegram-bot-api';
-import { downloadAndSaveImage, errorHandler, waitingTexts, sendMessage ,checkUserExistence, storeUserData, createOrUpdateMealEntry } from "../utils/helper.js";
+import { downloadAndSaveImage, errorHandler, waitingTexts, sendMessage ,checkUserExistence, storeUserData, createOrUpdateMealEntry,checkUserUsage } from "../utils/helper.js";
 import { openAiVision } from "../utils/helper.js"; // Import the openAiVision function
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -21,6 +21,12 @@ bot.on('message', async (msg) => {
             await storeUserData(chatId, firstName, lastName );
         }
 
+        const upgradePlanUrl = await checkUserUsage(chatId);
+        if (upgradePlanUrl) {
+            await sendMessage(chatId, `Your magic meals credit has been used up. Please upgrade your plan: ${upgradePlanUrl}`);
+            return;
+        }
+
         // Create or update meal entry for the user for the current month
         await createOrUpdateMealEntry(chatId, userName);
 
@@ -37,14 +43,31 @@ bot.on('message', async (msg) => {
         const messageText = msg.text || "";
         if (msg.photo && msg.photo.length > 0) {
             // Handle images
+
+
             await sendMessage(msg.chat.id, waitingTexts[Math.random() * waitingTexts.length | 0]);
             const photo = msg.photo[msg.photo.length - 1];
             console.log('Received photo:', photo);
 
+
+
             const fileDetails = await downloadAndSaveImage(photo.file_id, chatId, userName);
+            if (!fileDetails.success) {
+                // Check if the content of the response indicates the need to upgrade the plan
+                if (fileDetails.content === 'Your magic meals credit has been used up. Please upgrade your plan.') {
+                    // Send the message with the upgrade plan link
+                    const updatePlan = "https://www.magicslides.app/tools"
+                    await sendMessage(chatId, `${fileDetails.content} ${updatePlan}.`);
+                } else {
+                    // Handle other errors or messages as needed
+                    await sendMessage(chatId, 'An error occurred. Please try again later.');
+                }
+                return;
+            }
 
             console.log('vision details:', fileDetails.content);
             await sendMessage(msg.chat.id, fileDetails.content);
+           
             return;
         }
 

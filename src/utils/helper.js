@@ -67,19 +67,8 @@ export async function sendMessage(chatId, messageText) {
   }
 }
 
-// export async function sendMessage(chatId, message) {
-//     try {
-//         // Check if the message is not empty
-//         if (message && message.trim() !== '') {
-//             // Send the message using Telegram API
-//             await bot.sendMessage(chatId, message);
-//         } else {
-//             console.error('Error sending message: Message text is empty');
-//         }
-//     } catch (error) {
-//         console.error('Error sending message:', error);
-//     }
-// }
+
+
 
 // Function to download and save an image
 export async function downloadAndSaveImage(fileId, chatId, userName) {
@@ -160,90 +149,61 @@ export async function downloadAndSaveImage(fileId, chatId, userName) {
           (ingredient) => `\n- ${ingredient.ingredient} (${ingredient.weight}g)`
         )}`;
 
-    // const currentDate = getCurrentDate();
+    const currentDate = getCurrentDate();
 
-    // const { data: userData, error: userError } = await supabase
-    //     .from('users')
-    //     .select('meals, usage')
-    //     .eq('telegram_id', chatId)
-    //     .single();
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('meals, usage')
+        .eq('telegram_id', chatId)
+        .single();
 
-    // if (userError) {
-    //     console.error('Error fetching user data:', userError);
-    //     throw new Error('Failed to fetch user data');
-    // }
+    if (userError) {
+        console.error('Error fetching user data:', userError);
+        throw new Error('Failed to fetch user data');
+    }
 
-    // // Update the 'meals' and 'usage' columns in the 'users' table
-    // const existingMeals = userData.meals || {};
-    // const existingMealForCurrentDate = existingMeals[currentDate] || {};
+
+
+    const existingUsage = userData.usage || {};
+    const existingUsageForCurrentDate = existingUsage[currentDate] || { magic_meals_credit_used: 0 };
+
+    // Calculate remaining magic meals credit
+    const remainingCredit = existingUsageForCurrentDate.magic_meals_credit - existingUsageForCurrentDate.magic_meals_credit_used;
+
+    // If remaining credit is zero, return early without saving the data
+    if (remainingCredit <= 0) {
+      const message = `Your magic meals credit has been used up. Please upgrade your plan.`;
+      return {
+        success: false,
+        filePath: filePath,
+        fileDetails: null,
+        content: message,
+      };
+    }
+
+
+    // Update the 'meals' and 'usage' columns in the 'users' table
+    const existingMeals = userData.meals || {};
+    const existingMealForCurrentDate = existingMeals[currentDate] || {};
     // const existingUsage = userData.usage || {};
     // const existingUsageForCurrentDate = existingUsage[currentDate] || { magic_meals_credit_used: 0 };
 
-    // const protein = parsedJson.macros.protein
-    // const carbs = parsedJson.macros.carbs
-    // const fat = parsedJson.macros.fat
+    const protein = parsedJson.macros.protein
+    const carbs = parsedJson.macros.carbs
+    const fat = parsedJson.macros.fat
 
-    // await supabase
-    //     .from('users')
-    //     .update({
-    //         // Append the new meal data to existing meal data if it exists for the current date
-    //         meals: { ...existingMeals, [currentDate]: { ...existingMealForCurrentDate, Protein: (existingMealForCurrentDate.Protein || 0) + protein, Carbs: (existingMealForCurrentDate.Carbs || 0) + carbs, Fat: (existingMealForCurrentDate.Fat || 0) + fat }},
-    //         // Increment the magic_meals_credit_used value in the usage column
-    //         usage: { ...existingUsage, [currentDate]: {magic_meals_credit: existingUsage.magic_meals_credit || 3,magic_meals_credit_used: existingUsageForCurrentDate.magic_meals_credit_used + 1 }},
-    //     })
-    //     .eq('telegram_id', chatId);
-
-    // Update the 'meals' column in the 'users' table based on existing or new dates
-    const currentDate = getCurrentDate();
-
-    // Retrieve user data from the 'users' table
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("meals")
-      .eq("telegram_id", chatId)
-      .single();
-
-    if (userError) {
-      console.error("Error fetching user data:", userError);
-      throw new Error("Failed to fetch user data");
-    }
-
-    // Update the 'meals' column based on existing or new dates
-    const existingMeals = userData.meals || {};
-
-    if (existingMeals[currentDate]) {
-      // If the current date exists, update the meal data for that date
-      const existingMealForCurrentDate = existingMeals[currentDate];
-      await supabase
-        .from("users")
+    await supabase
+        .from('users')
         .update({
-          meals: {
-            ...existingMeals,
-            [currentDate]: {
-              ...existingMealForCurrentDate,
-              Protein: (existingMealForCurrentDate.Protein || 0) + protein,
-              Carbs: (existingMealForCurrentDate.Carbs || 0) + carbs,
-              Fat: (existingMealForCurrentDate.Fat || 0) + fat,
-            },
-          },
+            // Append the new meal data to existing meal data if it exists for the current date
+            meals: { ...existingMeals, [currentDate]: { ...existingMealForCurrentDate, Protein: (existingMealForCurrentDate.Protein || 0) + protein, Carbs: (existingMealForCurrentDate.Carbs || 0) + carbs, Fat: (existingMealForCurrentDate.Fat || 0) + fat }},
+            // Increment the magic_meals_credit_used value in the usage column
+            usage: { ...existingUsage, [currentDate]: {magic_meals_credit: existingUsage.magic_meals_credit || 3,magic_meals_credit_used: existingUsageForCurrentDate.magic_meals_credit_used + 1 }},
         })
-        .eq("telegram_id", chatId);
-    } else {
-      // If the current date does not exist, create a new entry for that date
-      await supabase
-        .from("users")
-        .update({
-          meals: {
-            ...existingMeals,
-            [currentDate]: {
-              "Protein": protein,
-              "Carbs": carbs,
-              "Fat": fat,
-            },
-          },
-        })
-        .eq("telegram_id", chatId);
-    }
+        .eq('telegram_id', chatId);
+
+   
+    
     return {
       success: true,
       filePath: filePath,
@@ -251,7 +211,7 @@ export async function downloadAndSaveImage(fileId, chatId, userName) {
       content: message,
     };
   } catch (error) {
-    console.error("Error downloading and saving image:", error);
+    console.error("Error downloading and saving image:", error); 
     return {
       success: false,
       filePath: filePath,
@@ -452,18 +412,12 @@ export async function createOrUpdateMealEntry(chatId, userName) {
       !existingMeals.length ||
       !existingMeals[0].meals[currentMonthYear]
     ) {
-      const newMealEntry = {
-        currentDate: {
-          Carb: 0,
-          Protein: 0,
-          Fat: 0,
-        },
-      };
+      
 
       // Update the user's meal entry in the "users" table
       const { data: updatedUserData, error: updateError } = await supabase
         .from("users")
-        .update({ meals: { ...existingMeals[0].meals, ...newMealEntry } })
+        .update({ meals: { ...existingMeals[0].meals } })
         .eq("telegram_id", chatId);
 
       if (updateError) {
@@ -480,3 +434,150 @@ export async function createOrUpdateMealEntry(chatId, userName) {
     return false;
   }
 }
+
+
+export async function checkUserUsage(chatId) {
+    try {
+        // Query Supabase to get the user's usage data
+        const { data, error } = await supabase
+            .from('users')
+            .select('usage')
+            .eq('telegram_id', chatId)
+            .single();
+
+        if (error) {
+            console.error('Error fetching user usage data:', error);
+            throw new Error('Failed to fetch user usage data');
+        }
+
+        // Check if user's magic meals credit has been used up
+        const usage = data?.usage;
+        if (usage && (usage.currentDate.magic_meals_credit -usage.currentDate.magic_meals_credit_used ) <= 0) {
+            // Return the URL to upgrade the plan
+            return 'https://your-upgrade-plan-url.com';
+        }
+
+        // Return null if credit hasn't been used up
+        return null;
+    } catch (error) {
+        console.error('Error checking user usage:', error);
+        return null;
+    }
+}
+
+
+// // Function to calculate totals for today
+// export async function todayData(chatId) {
+//     try {
+//         const currentDate = getCurrentDate(); // Get current date in 'dd-mm-yyyy' format
+//         const { data: userData, error: userError } = await supabase
+//             .from('users')
+//             .select('meals')
+//             .eq('telegram_id', chatId)
+//             .single();
+
+//         if (userError) {
+//             console.error('Error fetching user data:', userError);
+//             throw new Error('Failed to fetch user data');
+//         }
+
+//         const meals = userData.meals || {};
+//         const todayData = meals[currentDate] || {};
+
+//         // Calculate total Protein, Carbs, and Fat for today
+//         let totalProtein = 0;
+//         let totalCarbs = 0;
+//         let totalFat = 0;
+
+//         if (todayData) {
+//             totalProtein = todayData.Protein || 0;
+//             totalCarbs = todayData.Carbs || 0;
+//             totalFat = todayData.Fat || 0;
+//         }
+
+//         return { totalProtein, totalCarbs, totalFat };
+//     } catch (error) {
+//         console.error('Error calculating totals for today:', error);
+//         throw error;
+//     }
+// }
+
+// // Function to calculate totals for the last 7 days (week)
+// export async function weekData(chatId) {
+//     try {
+//         const currentDate = getCurrentDate(); // Get current date in 'dd-mm-yyyy' format
+//         const dates = Array.from({ length: 7 }, (_, i) => {
+//             const date = new Date(new Date(currentDate).getTime() - i * 24 * 60 * 60 * 1000);
+//             return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+//         });
+
+//         const { data: userData, error: userError } = await supabase
+//             .from('users')
+//             .select('meals')
+//             .eq('telegram_id', chatId)
+//             .single();
+
+//         if (userError) {
+//             console.error('Error fetching user data:', userError);
+//             throw new Error('Failed to fetch user data');
+//         }
+
+//         const meals = userData.meals || {};
+//         let totalProtein = 0;
+//         let totalCarbs = 0;
+//         let totalFat = 0;
+
+//         // Calculate totals for the last 7 days
+//         for (const date of dates) {
+//             const data = meals[date] || {};
+//             totalProtein += data.Protein || 0;
+//             totalCarbs += data.Carbs || 0;
+//             totalFat += data.Fat || 0;
+//         }
+
+//         return { totalProtein, totalCarbs, totalFat };
+//     } catch (error) {
+//         console.error('Error calculating totals for the last 7 days:', error);
+//         throw error;
+//     }
+// }
+
+// // Function to calculate totals for the last 30 days (month)
+// export async function monthData(chatId) {
+//     try {
+//         const currentDate = getCurrentDate(); // Get current date in 'dd-mm-yyyy' format
+//         const dates = Array.from({ length: 30 }, (_, i) => {
+//             const date = new Date(new Date(currentDate).getTime() - i * 24 * 60 * 60 * 1000);
+//             return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
+//         });
+
+//         const { data: userData, error: userError } = await supabase
+//             .from('users')
+//             .select('meals')
+//             .eq('telegram_id', chatId)
+//             .single();
+
+//         if (userError) {
+//             console.error('Error fetching user data:', userError);
+//             throw new Error('Failed to fetch user data');
+//         }
+
+//         const meals = userData.meals || {};
+//         let totalProtein = 0;
+//         let totalCarbs = 0;
+//         let totalFat = 0;
+
+//         // Calculate totals for the last 30 days
+//         for (const date of dates) {
+//             const data = meals[date] || {};
+//             totalProtein += data.Protein || 0;
+//             totalCarbs += data.Carbs || 0;
+//             totalFat += data.Fat || 0;
+//         }
+
+//         return { totalProtein, totalCarbs, totalFat };
+//     } catch (error) {
+//         console.error('Error calculating totals for the last 30 days:', error);
+//         throw error;
+//     }
+// }
