@@ -13,16 +13,16 @@ bot.on('message', async (msg) => {
         const userName = `${msg.from.first_name} ${msg.from.last_name || ""}`;
 
         //checking the user 
-        // const firstName = msg.from.first_name || "";
-        // const lastName = msg.from.last_name || "";
-        // const userExists = await checkUserExistence(chatId);
-        // if (!userExists) {
+        const firstName = msg.from.first_name || "";
+        const lastName = msg.from.last_name || "";
+        const userExists = await checkUserExistence(chatId);
+        if (!userExists) {
            
-        //     await storeUserData(chatId, firstName, lastName );
-        // }
+            await storeUserData(chatId, firstName, lastName );
+        }
 
-        // // Create or update meal entry for the user for the current month
-        // await createOrUpdateMealEntry(chatId, userName);
+        // Create or update meal entry for the user for the current month
+        await createOrUpdateMealEntry(chatId, userName);
 
 
 
@@ -64,7 +64,7 @@ bot.on('message', async (msg) => {
                     default:
                         return;
                 }
-            } else {
+            }if(messageText){
                 
                 // Send the message to OpenAI for processing
                 const openaiResponse = await openAiVision(messageText);
