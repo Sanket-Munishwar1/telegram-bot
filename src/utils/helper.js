@@ -66,22 +66,6 @@ export async function sendMessage(chatId, messageText) {
     console.error("Error sending message:", error);
     return false; // Return false if there's an error
   }
-
-
-
-export async function sendMessage(chatId, message) {
-    try {
-        // Check if the message is not empty
-        if (message && message.trim() !== '') {
-            // Send the message using Telegram API
-            await bot.sendMessage(chatId, message);
-        } else {
-            console.error('Error sending message: Message text is empty');
-        }
-    } catch (error) {
-        console.error('Error sending message:', error);
-    }
-
 }
 
 
@@ -162,31 +146,9 @@ export async function downloadAndSaveImage(fileId, chatId, userName) {
         - Protein: ${parsedJson.macros.protein}g
         - Carbs: ${parsedJson.macros.carbs}g
         - Fat: ${parsedJson.macros.fat}g
-
         Likely Ingredients: ${parsedJson.likely_ingredients.map(
           (ingredient) => `\n- ${ingredient.ingredient} (${ingredient.weight}g)`
         )}`;
-
-        Likely Ingredients: ${parsedJson.likely_ingredients.map(ingredient => `\n- ${ingredient.ingredient} (${ingredient.weight}g)`)}`;
-
-
-        return {
-            success: true,
-            filePath: filePath,
-            fileDetails: fileDetails,
-            content: message
-        };
-    } catch (error) {
-        console.error('Error downloading and saving image:', error);
-        return {
-            success: false,
-            filePath: filePath,
-            fileDetails: null,
-            content: 'Something went wrong, please try again later.'
-        };
-    }
-}
-
 
     const currentDate = getCurrentDate();
 
@@ -200,8 +162,6 @@ export async function downloadAndSaveImage(fileId, chatId, userName) {
         console.error('Error fetching user data:', userError);
         throw new Error('Failed to fetch user data');
     }
-
-
 
     const existingUsage = userData.usage || {};
     const existingUsageForCurrentDate = existingUsage[currentDate] || { magic_meals_credit_used: 0 };
