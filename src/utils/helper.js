@@ -384,47 +384,11 @@ export async function sendMessageWithKeyboard(chatId, messageText, options) {
 
 
 // Function to process image using OpenAI
-export async function openAiVision(url) {
-  try {
-    const response = await anthropic.messages.create({
-      model: "claude-3-sonnet-20240229",
-      temperature: 1,
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `here is the food i had i am on diet and want to estimate my calorie and macros, tell me ESTIMATED calories and macros, give me in json. JSON format: {
-                        "food_name": "food name",
-                        "calories":"estimated ballpark in kcal",
-                        "macros": {"protein":"estimated in g", "carbs":"estimated in g", "fat":"estimated in g"},
-                        "likely_ingredients": [{"ingredient": "ingredient_name", "weight": "estimated in g"}]
-                    }, calories, macros values should be in number only no text. do not blabber just JSON:`,
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: url,
-              },
-            },
-          ],
-          max_tokens: 4000,
-        },
-      ],
-     
-    });
-    console.log(response)
-    return response;
-  } catch (error) {
-    console.log("error", error);
-    return null;
-  }
-}
 // export async function openAiVision(url) {
 //   try {
-//     const response = await openai.chat.completions.create({
-//       model: "gpt-4-vision-preview",
+//     const response = await anthropic.messages.create({
+//       model: "claude-3-sonnet-20240229",
+//       temperature: 1,
 //       messages: [
 //         {
 //           role: "user",
@@ -445,9 +409,10 @@ export async function openAiVision(url) {
 //               },
 //             },
 //           ],
+//           max_tokens: 4000,
 //         },
 //       ],
-//       max_tokens: 4096,
+     
 //     });
 //     console.log(response)
 //     return response;
@@ -456,6 +421,41 @@ export async function openAiVision(url) {
 //     return null;
 //   }
 // }
+export async function openAiVision(url) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4-vision-preview",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `here is the food i had i am on diet and want to estimate my calorie and macros, tell me ESTIMATED calories and macros, give me in json. JSON format: {
+                        "food_name": "food name",
+                        "calories":"estimated ballpark in kcal",
+                        "macros": {"protein":"estimated in g", "carbs":"estimated in g", "fat":"estimated in g"},
+                        "likely_ingredients": [{"ingredient": "ingredient_name", "weight": "estimated in g"}]
+                    }, calories, macros values should be in number only no text. do not blabber just JSON:`,
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: url,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 4096,
+    });
+    console.log(response)
+    return response;
+  } catch (error) {
+    console.log("error", error);
+    return null;
+  }
+}
 
 export async function generateResponse(messageText) {
   try {
