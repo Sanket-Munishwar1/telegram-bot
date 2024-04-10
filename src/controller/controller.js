@@ -1,7 +1,7 @@
 // controller.js
 
 import TelegramBot from 'node-telegram-bot-api';
-import { downloadAndSaveImage, errorHandler, waitingTexts, sendMessage ,checkUserExistence, storeUserData, createOrUpdateMealEntry,checkUserUsage } from "../utils/helper.js";
+import { downloadAndSaveImage, errorHandler, waitingTexts, sendMessage ,checkUserExistence, storeUserData, createOrUpdateMealEntry,checkUserUsage,todayData ,weekData, monthData,sendMessageWithKeyboard} from "../utils/helper.js";
 import { openAiVision } from "../utils/helper.js"; // Import the openAiVision function
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -44,12 +44,11 @@ bot.on('message', async (msg) => {
         const messageText = msg.text || "";
         if (msg.photo && msg.photo.length > 0) {
             // Handle images
-
+            
 
             await sendMessage(msg.chat.id, waitingTexts[Math.random() * waitingTexts.length | 0]);
             const photo = msg.photo[msg.photo.length - 1];
             console.log('Received photo:', photo);
-
 
 
             const fileDetails = await downloadAndSaveImage(photo.file_id, chatId, userName);
@@ -68,6 +67,19 @@ bot.on('message', async (msg) => {
 
             console.log('vision details:', fileDetails.content);
             await sendMessage(msg.chat.id, fileDetails.content);
+            
+            const keyboardOptions = {
+                reply_markup: JSON.stringify({
+                  inline_keyboard: [
+                    [
+                        { text: '📅 Today', callback_data: 'today' },
+                        { text: '📆 Week', callback_data: 'week' },
+                        { text: '🗓️ Month', callback_data: 'month' }
+                    ]
+                  ],
+                }),
+              };
+              await sendMessageWithKeyboard(chatId, 'Pick a time frame.', keyboardOptions);
            
             return;
         }
@@ -114,5 +126,38 @@ bot.on('message', async (msg) => {
         console.error(error);
     }
 });
+bot.on('callback_query', async (callbackQuery) => {
+    const action = callbackQuery.data; // The data from the button callback
+    const msg = callbackQuery.message; // The original message object from Telegram
+    const chatId = msg.chat.id; // The chat ID where the callback comes from
+  
+    // Respond to the callback query to acknowledge it, required by the Telegram API
+    bot.answerCallbackQuery(callbackQuery.id)
+      .then(() => console.log(`Answered callback query from ${chatId}`))
+      .catch(console.error);
+  
+    // Perform different actions based on the callback data
+    switch (action) {
+      case 'today':
+        // Call your function for 'today' and send the result back to the user
+        const todayResult = await todayData(chatId);
+        await sendMessage(chatId, `Today's data: ${JSON.stringify(todayResult)}`);
+        break;
+      case 'week':
+        // Call your function for 'week' and send the result back to the user
+        const weekResult = await weekData(chatId);
+        await sendMessage(chatId, `Week's data: ${JSON.stringify(weekResult)}`);
+        break;
+      case 'month':
+        // Call your function for 'month' and send the result back to the user
+        const monthResult = await monthData(chatId);
+        await sendMessage(chatId, `Month's data: ${JSON.stringify(monthResult)}`);
+        break;
+      default:
+        // Handle unknown callback
+        await sendMessage(chatId, "I'm not sure what you're asking for.");
+        break;
+    }
+  });
 
 export { bot };
