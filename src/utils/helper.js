@@ -74,107 +74,210 @@ export async function sendMessage(chatId, messageText) {
 
 
 
-
-
+// Function to download and save an image
 export async function downloadAndSaveImage(fileId, chatId, userName) {
-    let parsedJson;
-    const filePath = `uploads/${fileId}.jpg`;
-  
-    try {
-      // Download the file content using the Telegram bot
-      const fileDetails = await bot.getFile(fileId);
-      const fileStream = bot.getFileStream(fileId);
-  
-      // Create the uploads directory if it doesn't exist
-      if (!fs.existsSync("uploads")) {
-        fs.mkdirSync("uploads");
-      }
-  
-      // Save the file
-      const writeStream = fs.createWriteStream(filePath);
-      fileStream.pipe(writeStream);
-  
-      // Wait for the file to finish writing
-      await new Promise((resolve, reject) => {
-        writeStream.on('finish', resolve);
-        writeStream.on('error', reject);
-      });
-  
-      console.log("Image downloaded and saved:", filePath);
-  
-      // Process image using OpenAI
-      const base64Image = fs.readFileSync(filePath, { encoding: "base64" });
-      const imageURL = "data:image/jpeg;base64," + base64Image;
-      const openaiResponse = await openAiVision(imageURL);
-  
-      if (!openaiResponse || !openaiResponse.choices || openaiResponse.choices.length === 0) {
-        throw new Error("Failed to process image with OpenAI.");
-      }
-  
-      // Extracting processed information
-      const jsonContent = openaiResponse.choices[0].message.content.match(/```json\n([\s\S]+)\n```/)[1];
-      parsedJson = JSON.parse(jsonContent);
-  
-      // Fetch the user's current data
-      const currentDate = getCurrentDate();
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('meals, usage')
-        .eq('telegram_id', chatId)
-        .single();
-  
-      if (userError) {
-        throw new Error('Failed to fetch user data');
-      }
-  
-      // Update user's credit usage
-      const existingUsage = userData.usage || {};
-      const existingUsageForCurrentDate = existingUsage[currentDate] || { magic_meals_credit_used: 0, magic_meals_credit: 50 };
-      if (existingUsageForCurrentDate.magic_meals_credit - existingUsageForCurrentDate.magic_meals_credit_used <= 0) {
-        return {
-          success: false,
-          content: "Your magic meals credit has been used up. Please upgrade your plan.",
-        };
-      }
-  
-      // Deduct one credit
-      existingUsageForCurrentDate.magic_meals_credit_used++;
-  
-      // Update the user's record with the new credit count
-      await supabase
-        .from('users')
-        .update({
-          usage: { ...existingUsage, [currentDate]: existingUsageForCurrentDate },
-        })
-        .eq('telegram_id', chatId);
-  
-      // Construct success message with analyzed data
-      const message = `
-        ✅ Done! Thanks for sharing! 👍
+  let parsedJson;
+  let url = "";
+  const filePath = `uploads/${fileId}.jpg`;
+
+  try {
+    // Download the file content using the Telegram bot
+    const fileDetails = await bot.getFile(fileId);
+    const fileStream = bot.getFileStream(fileId);
+
+    // Create the uploads directory if it doesn't exist
+    if (!fs.existsSync("uploads")) {
+      fs.mkdirSync("uploads");
+    }
+
+    const writeStream = fs.createWriteStream(filePath);
+    fileStream.pipe(writeStream);
+
+    // Promise to handle the stream
+    const streamPromise = new Promise((resolve, reject) => {
+      writeStream.on("finish", resolve);
+      writeStream.on("error", reject);
+    });
+
+    // Wait for the stream to finish
+    await streamPromise;
+
+    console.log("Image downloaded and saved:", filePath);
+
+    // Process image using OpenAI
+    const base64Image = fs.readFileSync(filePath, { encoding: "base64" });
+    const imageURL = "data:image/jpeg;base64," + base64Image;
+    const openaiResponse = await openAiVision(imageURL);
+
+    // Handle OpenAI response
+    if (
+      !openaiResponse ||
+      !openaiResponse.choices ||
+      openaiResponse.choices.length === 0
+    ) {
+      throw new Error("Failed to process image");
+    }
+
+    const jsonContent = openaiResponse.choices[0].message.content.match(
+      /```json\n([\s\S]+)\n```/
+    )[1];
+    parsedJson = JSON.parse(jsonContent);
+
+    // Upload image to Supabase
+    url = await uploadFileToSupabase(filePath);
+    const totalTokens = openaiResponse.usage.total_tokens;
+    // Store response in Supabase
+    const payload = {
+      user_id: chatId,
+      user_name: userName,
+      image_url: url,
+      response: JSON.stringify(parsedJson),
+      token_used: totalTokens,
+    };
+    const { data, error } = await supabase.from("meals").insert(payload);
+
+    if (error) {
+      console.error("Failed to store response in Supabase:", error);
+    }
+
+    // Construct message
+    const message = `
+        ✅ Done thanks for sharing 👍
         Dish Name: ${parsedJson.food_name}
         Calories: ${parsedJson.calories} kcal
         Macros:
         - Protein: ${parsedJson.macros.protein}g
         - Carbs: ${parsedJson.macros.carbs}g
         - Fat: ${parsedJson.macros.fat}g
-        Likely Ingredients: ${parsedJson.likely_ingredients.map(ingredient => `\n- ${ingredient.ingredient} (${ingredient.weight}g)`).join('')}
-      `;
-  
-      return {
-        success: true,
-        filePath: filePath,
-        fileDetails: fileDetails,
-        content: message,
-      };
-    } catch (error) {
-      console.error("Error in downloadAndSaveImage:", error);
+        Likely Ingredients: ${parsedJson.likely_ingredients.map(
+          (ingredient) => `\n- ${ingredient.ingredient} (${ingredient.weight}g)`
+        )}`;
+
+    const currentDate = getCurrentDate();
+
+    const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('meals, usage')
+        .eq('telegram_id', chatId)
+        .single();
+
+    if (userError) {
+        console.error('Error fetching user data:', userError);
+        throw new Error('Failed to fetch user data');
+    }
+
+
+
+    const existingUsage = userData.usage || {};
+    const existingUsageForCurrentDate = existingUsage[currentDate] || { magic_meals_credit_used: 0 };
+
+    // Calculate remaining magic meals credit
+    const remainingCredit = existingUsageForCurrentDate.magic_meals_credit - existingUsageForCurrentDate.magic_meals_credit_used;
+
+    // If remaining credit is zero, return early without saving the data
+    if (remainingCredit <= 0) {
+      const message = `Your magic meals credit has been used up. Please upgrade your plan.`;
       return {
         success: false,
-        filePath: null,
-        content: "An error occurred during the image processing.",
+        filePath: filePath,
+        fileDetails: null,
+        content: message,
       };
     }
+
+
+    // Update the 'meals' and 'usage' columns in the 'users' table
+    const existingMeals = userData.meals || {};
+    const existingMealForCurrentDate = existingMeals[currentDate] || {};
+    // const existingUsage = userData.usage || {};
+    // const existingUsageForCurrentDate = existingUsage[currentDate] || { magic_meals_credit_used: 0 };
+
+    const protein = parsedJson.macros.protein
+    const carbs = parsedJson.macros.carbs
+    const fat = parsedJson.macros.fat
+
+    await supabase
+        .from('users')
+        .update({
+            // Append the new meal data to existing meal data if it exists for the current date
+            meals: { ...existingMeals, [currentDate]: { ...existingMealForCurrentDate, Protein: (existingMealForCurrentDate.Protein || 0) + protein, Carbs: (existingMealForCurrentDate.Carbs || 0) + carbs, Fat: (existingMealForCurrentDate.Fat || 0) + fat }},
+            // Increment the magic_meals_credit_used value in the usage column
+            usage: { ...existingUsage, [currentDate]: {magic_meals_credit: existingUsage.magic_meals_credit || 50,magic_meals_credit_used: existingUsageForCurrentDate.magic_meals_credit_used + 1 }},
+        })
+        .eq('telegram_id', chatId);
+    
+    return {
+      success: true,
+      filePath: filePath,
+      fileDetails: fileDetails,
+      content: message,
+    };
+  } catch (error) {
+    console.error("Error downloading and saving image:", error); 
+    return {
+      success: false,
+      filePath: filePath,
+      fileDetails: null,
+      content: "Something went wrong, please try again later.",
+    };
   }
+}
+
+
+
+// Function to create or update the meal entry for the user for the current month
+export async function createOrUpdateMealEntry(chatId, userName) {
+  try {
+    // Get the current month and year
+    const currentDate = new Date();
+    // const currentMonth = currentDate.getMonth() + 1; // Month is zero-based, so add 1
+    // const currentYear = currentDate.getFullYear();
+    // const currentMonthYear = `${currentMonth}-${currentYear}`;
+
+    // Check if the user has a meal entry for the current month
+    const { data: existingMeals, error } = await supabase
+      .from("users")
+      .select("meals")
+      .eq("telegram_id", chatId);
+      
+
+    if (error) {
+      console.error("Error fetching user data:", error.message);
+      return false;
+    }
+
+    // If the user doesn't have a meal entry for the current month, create a new one
+    if (
+      !existingMeals ||
+      !existingMeals.length ||
+      !existingMeals[0].meals[currentDate]
+    ) {
+      
+
+      // Update the user's meal entry in the "users" table
+      const { data: updatedUserData, error: updateError } = await supabase
+        .from("users")
+        .update({ meals: { ...existingMeals[0].meals } })
+        .eq("telegram_id", chatId);
+
+      if (updateError) {
+        console.error("Error updating user data:", updateError.message);
+        return false;
+      }
+
+      console.log("Meal entry created successfully for:", userName);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error creating or updating meal entry:", error.message);
+    return false;
+  }
+}
+
+
+
+
   
 // Function to upload a file to Supabase
 export async function uploadFileToSupabase(filePath) {
@@ -359,47 +462,7 @@ export async function checkUserExistence(chatId) {
 
 
 
-export async function createOrUpdateMealEntry(chatId, userName, mealData) {
-    const currentDate = getCurrentDate();
-    try {
-      const { data: userData, error } = await supabase
-        .from("users")
-        .select("meals, usage")
-        .eq("telegram_id", chatId)
-        .single();
-  
-      if (error) throw new Error('Error fetching user data.');
-  
-      const existingMeals = userData.meals || {};
-      const existingMealForCurrentDate = existingMeals[currentDate] || { Protein: 0, Carbs: 0, Fat: 0 };
-  
-      // Merge new meal data with existing meal data for the current date
-      const updatedMealData = {
-        ...existingMealForCurrentDate,
-        Protein: (existingMealForCurrentDate.Protein || 0) + (mealData.Protein || 0),
-        Carbs: (existingMealForCurrentDate.Carbs || 0) + (mealData.Carbs || 0),
-        Fat: (existingMealForCurrentDate.Fat || 0) + (mealData.Fat || 0)
-      };
-  
-      const { data: updatedData, error: updateError } = await supabase
-        .from('users')
-        .update({
-          meals: {
-            ...existingMeals,
-            [currentDate]: updatedMealData,
-          },
-        })
-        .eq('telegram_id', chatId);
-  
-      if (updateError) throw new Error('Error updating meal data.');
-  
-      console.log("Meal entry updated successfully for:", userName);
-      return true;
-    } catch (error) {
-      console.error("Error in createOrUpdateMealEntry:", error);
-      return false;
-    }
-  }
+
 
 
 
